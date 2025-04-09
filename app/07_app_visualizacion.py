@@ -725,7 +725,7 @@ elif seccion == "Similares":
 
     # Carga de archivos externos
     df_datos = pd.read_excel("Data/eventos_copa_america/Copa_America_24.xlsx")
-    df_metricas = pd.read_excel("Proyecto Final/Data/eventos_copa_america/Metricas.xlsx")
+    df_metricas = pd.read_excel("Data/eventos_copa_america/Metricas.xlsx")
 
     # Limpiar nombres de columnas (muy importante)
     df_datos.columns = df_datos.columns.str.strip()
@@ -834,21 +834,19 @@ elif seccion == "Agrupamientos":
     st.markdown("Esta visualización agrupa a los jugadores en 3 clusters según sus métricas durante la Copa América 2024.")
 
     # Cargar archivo base
-    df_datos = pd.read_excel("Data/eventos_copa_america/Copa_America_24.xlsx")
+    df = pd.read_excel("Data/eventos_copa_america/Copa_America_24.xlsx")
     df.columns = df.columns.str.strip()
 
     # Filtro por minutos
     if "minutesOnField" in df.columns:
-     df = df[df["minutesOnField"] >= 150]
+        df = df[df["minutesOnField"] >= 150]
 
-    if df.empty:
-        st.info("⚠️ No hay jugadores con más de 150 minutos.")
+        if df.empty:
+            st.info("⚠️ No hay jugadores con más de 150 minutos.")
+        else:
+            st.dataframe(df.head())  # vista previa
     else:
-        # TODO: tu visualización va acá
-        st.dataframe(df.head())  # ejemplo
-else:
-    st.warning("⚠️ La columna 'minutesOnField' no está presente en el DataFrame.")
-
+        st.warning("⚠️ La columna 'minutesOnField' no está presente en el DataFrame.")
 
     # Agrupar por posición
     posiciones = {
@@ -874,6 +872,7 @@ else:
         # Normalizar métricas
         from sklearn.preprocessing import MinMaxScaler
         scaler = MinMaxScaler()
+        df_pos = df_pos.dropna(subset=columnas_metricas)
         df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
 
         # Clustering
