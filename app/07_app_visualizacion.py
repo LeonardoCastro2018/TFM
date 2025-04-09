@@ -76,7 +76,7 @@ else:
 # Cargar datos
 @st.cache_data
 def cargar_eventos():
-    df = pd.read_csv("Datos/eventos_copa_américa/eventos_copa_américa_2024.csv", low_memory=False)
+    pd.read_csv("Data/eventos_copa_america/eventos_copa_america_2024.csv"), low_memory=False
     if 'location' in df.columns:
         df = df[df['location'].notna()].copy()
         df['x'] = df['location'].apply(lambda loc: eval(loc)[0] if isinstance(loc, str) and ',' in loc else None)
@@ -85,7 +85,7 @@ def cargar_eventos():
 
 @st.cache_data
 def cargar_descripciones():
-    path = "Datos/eventos_copa_américa/eventos_descripciones.csv"
+    path = "Data/eventos_copa_america/eventos_descripciones.csv"
     if os.path.exists(path):
         descripciones_df = pd.read_csv(path)
         return dict(zip(descripciones_df['Evento'], descripciones_df['Descripción']))
