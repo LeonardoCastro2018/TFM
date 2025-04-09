@@ -825,22 +825,12 @@ elif seccion == "Agrupamientos":
     st.markdown("## 🧠 Agrupamiento de Jugadores según Perfil Estadístico")
     st.markdown("Esta visualización agrupa a los jugadores en 3 clusters según sus métricas durante la Copa América 2024.")
 
-    import os
-
-    # Cargar archivo base (usando CSV por compatibilidad con Cloud)
-    try:
-        df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
-        df.columns = df.columns.str.strip()
-    except Exception as e:
-        st.error(f"Error al cargar los datos base: {e}")
-        st.stop()
+    # Cargar archivo base
+    df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
+    df.columns = df.columns.str.strip()
 
     # Filtro por minutos
-    if "minutesOnField" not in df.columns:
-        st.error("No se encontró la columna 'minutesOnField' en el dataset.")
-        st.stop()
-
-    df = df[pd.to_numeric(df["minutesOnField"], errors="coerce") >= 150].copy()
+    df = df[df["minutesOnField"].apply(lambda x: str(x).replace(",", ".")).astype(float) >= 150]
 
     # Agrupar por posición
     posiciones = {
@@ -850,63 +840,60 @@ elif seccion == "Agrupamientos":
     }
 
     # Cargar métricas por posición
-    try:
-        metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
-        metricas_pos.columns = metricas_pos.columns.str.strip()
-    except Exception as e:
-        st.error(f"Error al cargar el archivo de métricas: {e}")
-        st.stop()
-
+    metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
+    
     # Seleccionar posición del usuario
     pos_sel = st.selectbox("Selecciona una posición", list(posiciones.keys()))
-
-    # Obtener métricas para la posición seleccionada
+    
     if pos_sel not in metricas_pos.columns:
         st.error(f"No se encontraron métricas para la posición '{pos_sel}'")
-        st.stop()
-
-    columnas_metricas = metricas_pos[pos_sel].dropna().astype(str).str.strip().tolist()
-    columnas_metricas = [col for col in columnas_metricas if col in df.columns]
-
-    # Filtrar jugadores por posición
-    df_pos = df[df["Pos_principal"] == posiciones[pos_sel]].copy()
-
-    if df_pos.empty or not columnas_metricas:
-        st.warning("No hay datos suficientes para esta posición o métricas no encontradas.")
     else:
-        # Normalizar métricas
-        from sklearn.preprocessing import MinMaxScaler
-        df_pos = df_pos.dropna(subset=columnas_metricas)
-        scaler = MinMaxScaler()
-        try:
-            df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
-        except Exception as e:
-            st.error(f"Error al normalizar las métricas: {e}")
-            st.stop()
+        columnas_metricas = metricas_pos[pos_sel].dropna().tolist()
+        columnas_metricas = [col for col in columnas_metricas if col in df.columns]
 
-        # Clustering
-        from sklearn.cluster import KMeans
-        if len(df_pos) < 3:
-            st.error("No hay suficientes jugadores con datos válidos para formar 3 clústers.")
+        # Filtrar jugadores por posición
+        df_pos = df[df["Pos_principal"] == posiciones[pos_sel]].copy()
+
+        if df_pos.empty or not columnas_metricas:
+            st.warning("No hay datos suficientes para esta posición o métricas no encontradas.")
         else:
-            kmeans = KMeans(n_clusters=3, random_state=42)
-            df_pos["cluster"] = kmeans.fit_predict(df_pos[columnas_metricas])
+            try:
+                from sklearn.preprocessing import MinMaxScaler
+                from sklearn.cluster import KMeans
+                import plotly.express as px
 
-            # Mostrar tabla de promedios por cluster
-            df_media = df_pos.groupby("cluster")[columnas_metricas].mean().reset_index()
-            st.markdown("### 📊 Promedio de métricas por Cluster")
-            st.dataframe(df_media, use_container_width=True)
+                # Convertir comas a punto y luego a float para cada columna métrica
+                for col in columnas_metricas:
+                    df_pos[col] = df_pos[col].astype(str).str.replace(",", ".").astype(float)
 
-            # Gráfico de barras por cluster
-            import plotly.express as px
-            df_melt = df_media.melt(id_vars="cluster", var_name="Métrica", value_name="Valor")
-            fig = px.bar(df_melt, x="Métrica", y="Valor", color="cluster", barmode="group",
-                         title="Distribución de Métricas por Cluster")
-            st.plotly_chart(fig, use_container_width=True)
+                # Normalizar métricas
+                scaler = MinMaxScaler()
+                df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
 
-            # Mostrar top 5 por cluster con nombre del jugador
-            st.markdown("### 🧑‍🏫 Top 5 jugadores por Cluster")
-            for c in sorted(df_pos["cluster"].unique()):
-                st.markdown(f"#### Cluster {c}")
-                cols = ["Nombre_Completo", "minutesOnField", "cluster"] + columnas_metricas
-                st.dataframe(df_pos[df_pos["cluster"] == c][cols].sort_values(by="minutesOnField", ascending=False).head(5), use_container_width=True)
+                # Clustering
+                if len(df_pos) < 3:
+                    st.error("⚠️ No hay suficientes jugadores con datos válidos para formar 3 clústers.")
+                else:
+                    kmeans = KMeans(n_clusters=3, random_state=42)
+                    df_pos["cluster"] = kmeans.fit_predict(df_pos[columnas_metricas])
+
+                    # Mostrar tabla de promedios por cluster
+                    df_media = df_pos.groupby("cluster")[columnas_metricas].mean().reset_index()
+                    st.markdown("### 📊 Promedio de métricas por Cluster")
+                    st.dataframe(df_media, use_container_width=True)
+
+                    # Gráfico de barras por cluster
+                    df_melt = df_media.melt(id_vars="cluster", var_name="Métrica", value_name="Valor")
+                    fig = px.bar(df_melt, x="Métrica", y="Valor", color="cluster", barmode="group",
+                                 title="Distribución de Métricas por Cluster")
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # Mostrar top 5 por cluster con nombre del jugador
+                    st.markdown("### 🧑‍🏫 Top 5 jugadores por Cluster")
+                    for c in sorted(df_pos["cluster"].unique()):
+                        st.markdown(f"#### Cluster {c}")
+                        cols = ["Nombre_Completo", "minutesOnField", "cluster"] + columnas_metricas
+                        st.dataframe(df_pos[df_pos["cluster"] == c][cols].sort_values(by="minutesOnField", ascending=False).head(5), use_container_width=True)
+
+            except Exception as e:
+                st.error(f"Error al normalizar las métricas: {e}")
