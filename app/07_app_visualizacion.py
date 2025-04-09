@@ -76,7 +76,7 @@ else:
 # Cargar datos
 @st.cache_data
 def cargar_eventos():
-    df = pd.read_csv("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/eventos_copa_america_2024.csv", low_memory=False)
+    df = pd.read_csv("Data/eventos_copa_america/eventos_copa_america_2024.csv", low_memory=False)
     if 'location' in df.columns:
         df = df[df['location'].notna()].copy()
         df['x'] = df['location'].apply(lambda loc: eval(loc)[0] if isinstance(loc, str) and ',' in loc else None)
@@ -85,7 +85,7 @@ def cargar_eventos():
 
 @st.cache_data
 def cargar_descripciones():
-    path = "C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/eventos_descripciones.csv"
+    path = "Data/eventos_copa_america/eventos_descripciones.csv"
     if os.path.exists(path):
         descripciones_df = pd.read_csv(path)
         return dict(zip(descripciones_df['Evento'], descripciones_df['Descripción']))
@@ -834,7 +834,7 @@ elif seccion == "Agrupamientos":
     st.markdown("Esta visualización agrupa a los jugadores en 3 clusters según sus métricas durante la Copa América 2024.")
 
     # Cargar archivo base
-    df = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Copa_America_24.xlsx")
+    df_datos = pd.read_excel("Data/eventos_copa_america/Copa_America_24.xlsx")
     df.columns = df.columns.str.strip()
 
     # Filtro por minutos
@@ -848,7 +848,7 @@ elif seccion == "Agrupamientos":
     }
 
     # Cargar métricas por posición
-    metricas_pos = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Metricas.xlsx", sheet_name=0)
+    metricas_pos = pd.read_excel("Data/eventos_copa_america/Metricas.xlsx")
     
     # Seleccionar posición del usuario
     pos_sel = st.selectbox("Selecciona una posición", list(posiciones.keys()))
