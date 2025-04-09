@@ -1,0 +1,13 @@
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+os
+mplsoccer
+scipy
+plotly
+scikit-learn
+fpdf
+Pillow
+openpyxl

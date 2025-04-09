@@ -1,0 +1,33 @@
+Evento,Descripción
+Carry,Conducciones de balón realizadas por un jugador en posesión entre dos puntos.
+Pass,Pases realizados entre jugadores del mismo equipo.
+Shot,Intentos de disparo al arco.
+Ball Receipt*,Recepciones exitosas del balón.
+Pressure,Presiones ejercidas por un jugador para recuperar el balón.
+Duel,Duelo individual entre dos jugadores (uno de cada equipo).
+Block,Intervenciones defensivas que bloquean tiros o pases.
+Clearance,Despejes del balón por parte del equipo defensor.
+Goal Keeper,Acciones realizadas por el arquero.
+Foul Committed,Faltas cometidas por un jugador.
+Dribble,Acciones en las que un jugador intenta eludir a un oponente con el balón.
+Foul Won,Faltas recibidas por un jugador.
+Miscontrol,Errores de control del balón que resultan en pérdida de posesión.
+Dispossessed,Pérdida de balón por parte de un jugador bajo presión.
+Interception,Intercepciones exitosas de un pase del oponente.
+Dribbled Past,Cuando un defensor es superado en un 1v1.
+Substitution,Cambio de jugador durante el partido.
+Injury Stoppage,Detención del juego por una lesión.
+50/50,Disputas por balones sueltos sin posesión clara previa.
+Half Start,Inicio del primer o segundo tiempo.
+Half End,Finalización del primer o segundo tiempo.
+Referee Ball-Drop,Reposición del juego con bote a tierra del árbitro.
+Tactical Shift,Cambio táctico registrado durante el partido.
+Starting XI,Listado inicial de jugadores titulares.
+Shield,Acción de cubrir el balón para mantener la posesión.
+Player Off,Jugador que sale del campo.
+Player On,Jugador que entra al campo.
+Bad Behaviour,Incidentes de comportamiento antideportivo.
+Error,Errores significativos registrados durante el partido.
+Offside,Falta por posición adelantada.
+Own Goal For,Gol a favor del equipo por error del rival.
+Own Goal Against,Gol en contra del equipo por error propio.
