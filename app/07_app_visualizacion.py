@@ -727,20 +727,19 @@ elif seccion == "Similares":
     df_datos = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
     df_metricas = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
 
-    # Limpiar nombres de columnas (muy importante)
     df_datos.columns = df_datos.columns.str.strip()
     df_metricas.columns = df_metricas.columns.str.strip()
 
-    # Selección de posición
+    # Convertir minutos a numérico
+    df_datos["minutesOnField"] = pd.to_numeric(df_datos["minutesOnField"], errors="coerce")
+
     posiciones_disponibles = df_datos["Pos_principal"].dropna().unique().tolist()
     posicion_seleccionada = st.selectbox("Seleccione una posición:", sorted(posiciones_disponibles))
 
-    # Rango de minutos jugados
     min_minutos = int(df_datos["minutesOnField"].min())
     max_minutos = int(df_datos["minutesOnField"].max())
     rango_minutos = st.slider("Filtrar por minutos jugados:", min_value=min_minutos, max_value=max_minutos, value=(100, max_minutos))
 
-    # Filtrado por posición y rango de minutos
     df_filtrado = df_datos[(df_datos["Pos_principal"] == posicion_seleccionada) &
                            (df_datos["minutesOnField"] >= rango_minutos[0]) &
                            (df_datos["minutesOnField"] <= rango_minutos[1])]
@@ -749,7 +748,6 @@ elif seccion == "Similares":
         st.error(f"No se encontraron métricas para la posición '{posicion_seleccionada}'")
     else:
         metricas_posicion = df_metricas[posicion_seleccionada].dropna().astype(str).str.strip().tolist()
-
         columnas_faltantes = [col for col in metricas_posicion if col not in df_filtrado.columns]
         if columnas_faltantes:
             st.error(f"Error: Las siguientes métricas no están en el archivo de datos: {columnas_faltantes}")
@@ -779,28 +777,20 @@ elif seccion == "Similares":
                 similares = df_metricas_filtradas.iloc[indices[0]].copy()
                 similares["Distancia"] = distancias[0]
                 similares = similares[similares["Jugador"] != jugador_base]
-
-                # Calcular similitud (%)
                 similares["Similitud (%)"] = (1 - (similares["Distancia"] / similares["Distancia"].max())) * 100
                 similares = similares.sort_values("Similitud (%)", ascending=False)
-
-                # Agregar columna N°
                 similares.reset_index(drop=True, inplace=True)
-                similares.index = similares.index + 1  # Para que arranque en 1
+                similares.index = similares.index + 1
 
-                # Mostrar resultados
                 st.success(f"Jugadores similares a **{jugador_base}** en la posición **{posicion_seleccionada}**:")
                 st.dataframe(similares[["Jugador", "Nacionalidad", "Similitud (%)"]])
-                
-                # Exportar a PDF
-                st.markdown("### 🧾 Exportar tabla de jugadores similares a PDF")
 
+                st.markdown("### 🧾 Exportar tabla de jugadores similares a PDF")
                 if st.button("Exportar a PDF"):
                     with st.spinner("Generando PDF..."):
                         import tempfile
                         from fpdf import FPDF
 
-                        # Crear PDF
                         pdf = FPDF()
                         pdf.add_page()
                         pdf.set_font("Arial", size=14)
@@ -833,61 +823,50 @@ elif seccion == "Agrupamientos":
     st.markdown("## 🧠 Agrupamiento de Jugadores según Perfil Estadístico")
     st.markdown("Esta visualización agrupa a los jugadores en 3 clusters según sus métricas durante la Copa América 2024.")
 
-    # Cargar archivo base
     df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
     df.columns = df.columns.str.strip()
+    df["minutesOnField"] = pd.to_numeric(df["minutesOnField"], errors="coerce")
 
-    # Filtro por minutos
     if "minutesOnField" in df.columns:
         df = df[df["minutesOnField"] >= 150]
-
         if df.empty:
             st.info("⚠️ No hay jugadores con más de 150 minutos.")
         else:
-            st.dataframe(df.head())  # vista previa
+            st.dataframe(df.head())
     else:
         st.warning("⚠️ La columna 'minutesOnField' no está presente en el DataFrame.")
 
-    # Agrupar por posición
     posiciones = {
         "ARQ": "ARQ", "DFC": "DFC", "LAT DER": "LAT DER",
         "LAT IZQ": "LAT IZQ", "MED": "MED", "MED MIX": "MED MIX",
         "MED OF": "MED OF", "EXTR": "EXTR", "DEL": "DEL"
     }
 
-    # Cargar métricas por posición
-    metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv")
-    
-    # Seleccionar posición del usuario
+    metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
     pos_sel = st.selectbox("Selecciona una posición", list(posiciones.keys()))
     columnas_metricas = metricas_pos[pos_sel].dropna().tolist()
     columnas_metricas = [col for col in columnas_metricas if col in df.columns]
 
-    # Filtrar jugadores por posición
     df_pos = df[df["Pos_principal"] == posiciones[pos_sel]].copy()
 
     if df_pos.empty or not columnas_metricas:
         st.warning("No hay datos suficientes para esta posición o métricas no encontradas.")
     else:
-        # Normalizar métricas
         from sklearn.preprocessing import MinMaxScaler
         scaler = MinMaxScaler()
         df_pos = df_pos.dropna(subset=columnas_metricas)
         df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
 
-        # Clustering
         from sklearn.cluster import KMeans
         kmeans = KMeans(n_clusters=3, random_state=42)
         df_pos["cluster"] = kmeans.fit_predict(df_pos[columnas_metricas])
 
-        # Mostrar top 5 por cluster con nombre del jugador
         st.markdown("### 🧑‍🏫 Top 5 jugadores por Cluster")
         for c in sorted(df_pos["cluster"].unique()):
             st.markdown(f"#### Cluster {c}")
             cols = ["Nombre_Completo", "minutesOnField", "cluster"] + columnas_metricas
             st.dataframe(df_pos[df_pos["cluster"] == c][cols].sort_values(by="minutesOnField", ascending=False).head(5), use_container_width=True)
 
-        # Exportar a PDF
         st.markdown("### 🧾 Exportar análisis a PDF")
         if st.button("Exportar a PDF", key="exportar_agrupamientos"):
             with st.spinner("Generando PDF..."):
