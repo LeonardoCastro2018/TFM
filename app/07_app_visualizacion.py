@@ -825,20 +825,22 @@ elif seccion == "Agrupamientos":
     st.markdown("## 🧠 Agrupamiento de Jugadores según Perfil Estadístico")
     st.markdown("Esta visualización agrupa a los jugadores en 3 clusters según sus métricas durante la Copa América 2024.")
 
-    # Cargar archivo base
-    df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
-    df.columns = df.columns.str.strip()
+    import os
+
+    # Cargar archivo base (usando CSV por compatibilidad con Cloud)
+    try:
+        df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
+        df.columns = df.columns.str.strip()
+    except Exception as e:
+        st.error(f"Error al cargar los datos base: {e}")
+        st.stop()
 
     # Filtro por minutos
-    if "minutesOnField" in df.columns:
-        df = df[pd.to_numeric(df["minutesOnField"], errors="coerce") >= 150]
+    if "minutesOnField" not in df.columns:
+        st.error("No se encontró la columna 'minutesOnField' en el dataset.")
+        st.stop()
 
-        if df.empty:
-            st.info("⚠️ No hay jugadores con más de 150 minutos.")
-        else:
-            st.dataframe(df.head())  # vista previa
-    else:
-        st.warning("⚠️ La columna 'minutesOnField' no está presente en el DataFrame.")
+    df = df[pd.to_numeric(df["minutesOnField"], errors="coerce") >= 150].copy()
 
     # Agrupar por posición
     posiciones = {
@@ -848,38 +850,59 @@ elif seccion == "Agrupamientos":
     }
 
     # Cargar métricas por posición
-    metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv")
-    
+    try:
+        metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
+        metricas_pos.columns = metricas_pos.columns.str.strip()
+    except Exception as e:
+        st.error(f"Error al cargar el archivo de métricas: {e}")
+        st.stop()
+
     # Seleccionar posición del usuario
     pos_sel = st.selectbox("Selecciona una posición", list(posiciones.keys()))
-    
+
+    # Obtener métricas para la posición seleccionada
     if pos_sel not in metricas_pos.columns:
         st.error(f"No se encontraron métricas para la posición '{pos_sel}'")
+        st.stop()
+
+    columnas_metricas = metricas_pos[pos_sel].dropna().astype(str).str.strip().tolist()
+    columnas_metricas = [col for col in columnas_metricas if col in df.columns]
+
+    # Filtrar jugadores por posición
+    df_pos = df[df["Pos_principal"] == posiciones[pos_sel]].copy()
+
+    if df_pos.empty or not columnas_metricas:
+        st.warning("No hay datos suficientes para esta posición o métricas no encontradas.")
     else:
-        columnas_metricas = metricas_pos[pos_sel].dropna().tolist()
-        columnas_metricas = [col.strip() for col in columnas_metricas if col.strip() in df.columns]
-
-        # Filtrar jugadores por posición
-        df_pos = df[df["Pos_principal"] == posiciones[pos_sel]].copy()
-
-        # Limpiar nulos y convertir columnas
+        # Normalizar métricas
+        from sklearn.preprocessing import MinMaxScaler
         df_pos = df_pos.dropna(subset=columnas_metricas)
-        for col in columnas_metricas:
-            df_pos[col] = pd.to_numeric(df_pos[col], errors="coerce")
-        df_pos = df_pos.dropna(subset=columnas_metricas)
+        scaler = MinMaxScaler()
+        try:
+            df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
+        except Exception as e:
+            st.error(f"Error al normalizar las métricas: {e}")
+            st.stop()
 
-        if df_pos.empty or len(df_pos) < 3:
+        # Clustering
+        from sklearn.cluster import KMeans
+        if len(df_pos) < 3:
             st.error("No hay suficientes jugadores con datos válidos para formar 3 clústers.")
         else:
-            from sklearn.preprocessing import MinMaxScaler
-            from sklearn.cluster import KMeans
-
-            scaler = MinMaxScaler()
-            df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
-
-            # Clustering
             kmeans = KMeans(n_clusters=3, random_state=42)
             df_pos["cluster"] = kmeans.fit_predict(df_pos[columnas_metricas])
+
+            # Mostrar tabla de promedios por cluster
+            df_media = df_pos.groupby("cluster")[columnas_metricas].mean().reset_index()
+            st.markdown("### 📊 Promedio de métricas por Cluster")
+            st.dataframe(df_media, use_container_width=True)
+
+            # Gráfico de barras por cluster
+            import plotly.express as px
+            df_melt = df_media.melt(id_vars="cluster", var_name="Métrica", value_name="Valor")
+            fig = px.bar(df_melt, x="Métrica", y="Valor", color="cluster", barmode="group",
+                         title="Distribución de Métricas por Cluster")
+            st.plotly_chart(fig, use_container_width=True)
 
             # Mostrar top 5 por cluster con nombre del jugador
             st.markdown("### 🧑‍🏫 Top 5 jugadores por Cluster")
@@ -887,43 +910,3 @@ elif seccion == "Agrupamientos":
                 st.markdown(f"#### Cluster {c}")
                 cols = ["Nombre_Completo", "minutesOnField", "cluster"] + columnas_metricas
                 st.dataframe(df_pos[df_pos["cluster"] == c][cols].sort_values(by="minutesOnField", ascending=False).head(5), use_container_width=True)
-
-            # Exportar a PDF
-            st.markdown("### 🧾 Exportar análisis a PDF")
-            if st.button("Exportar a PDF", key="exportar_agrupamientos"):
-                with st.spinner("Generando PDF..."):
-                    try:
-                        from fpdf import FPDF
-                        import tempfile
-
-                        pdf = FPDF()
-                        pdf.add_page()
-                        pdf.set_font("Arial", size=14)
-                        pdf.cell(200, 10, txt=f"Agrupamiento - {pos_sel}", ln=True, align="C")
-                        pdf.ln(10)
-
-                        for c in sorted(df_pos["cluster"].unique()):
-                            pdf.set_font("Arial", style="B", size=11)
-                            pdf.cell(200, 8, txt=f"Clúster {c}", ln=True)
-                            pdf.set_font("Arial", size=9)
-                            top5 = df_pos[df_pos["cluster"] == c].sort_values(by="minutesOnField", ascending=False).head(5)
-                            for _, row in top5.iterrows():
-                                texto = f"{row['Nombre_Completo']} - Min: {int(row['minutesOnField'])}"
-                                for m in columnas_metricas:
-                                    texto += f" | {m}: {row[m]:.2f}"
-                                pdf.multi_cell(0, 6, txt=texto)
-                            pdf.ln(3)
-
-                        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-                        pdf.output(temp_pdf.name)
-
-                        st.success("✅ PDF generado correctamente.")
-                        with open(temp_pdf.name, "rb") as f:
-                            st.download_button(
-                                label="📥 Descargar PDF",
-                                data=f,
-                                file_name=f"agrupamientos_completo_{pos_sel}.pdf",
-                                mime="application/pdf"
-                            )
-                    except Exception as e:
-                        st.error(f"Ocurrió un error al generar el PDF: {e}")
