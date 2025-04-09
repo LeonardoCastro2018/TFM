@@ -848,18 +848,17 @@ elif seccion == "Agrupamientos":
         "MED OF": "MED OF", "EXTR": "EXTR", "DEL": "DEL"
     }
 
-    # Cargar métricas por posición (corrigiendo lectura)
+    # Cargar métricas por posición
     metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
     metricas_pos.columns = metricas_pos.columns.str.strip()
 
     # Seleccionar posición del usuario
     pos_sel = st.selectbox("Selecciona una posición", list(posiciones.keys()))
-
     if pos_sel not in metricas_pos.columns:
         st.error(f"No se encontraron métricas para la posición '{pos_sel}'")
     else:
-        columnas_metricas = metricas_pos[pos_sel].dropna().astype(str).str.strip().tolist()
-        columnas_metricas = [col for col in columnas_metricas if col in df.columns]
+        columnas_metricas = metricas_pos[pos_sel].dropna().tolist()
+        columnas_metricas = [col.strip() for col in columnas_metricas if col.strip() in df.columns]
 
         # Filtrar jugadores por posición
         df_pos = df[df["Pos_principal"] == posiciones[pos_sel]].copy()
@@ -867,19 +866,22 @@ elif seccion == "Agrupamientos":
         if df_pos.empty or not columnas_metricas:
             st.warning("No hay datos suficientes para esta posición o métricas no encontradas.")
         else:
-            # Normalizar métricas
             from sklearn.preprocessing import MinMaxScaler
             from sklearn.cluster import KMeans
 
+            # Conversión a numérico y eliminación de filas con errores
+            df_pos[columnas_metricas] = df_pos[columnas_metricas].apply(pd.to_numeric, errors='coerce')
             df_pos = df_pos.dropna(subset=columnas_metricas)
+
             if len(df_pos) < 3:
                 st.error("No hay suficientes jugadores con datos válidos para formar 3 clústers.")
             else:
+                # Normalización
                 scaler = MinMaxScaler()
                 df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
 
                 # Clustering
-                kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+                kmeans = KMeans(n_clusters=3, random_state=42)
                 df_pos["cluster"] = kmeans.fit_predict(df_pos[columnas_metricas])
 
                 # Mostrar top 5 por cluster con nombre del jugador
