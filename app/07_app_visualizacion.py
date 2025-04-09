@@ -724,8 +724,8 @@ elif seccion == "Similares":
     st.markdown("Encuentra jugadores con perfiles estadísticos similares durante la Copa América 2024.")
 
     # Carga de archivos externos
-    df_datos = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv")
-    df_metricas = pd.read_csv("Data/eventos_copa_america/Metricas.csv")
+    df_datos = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
+    df_metricas = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
 
     # Limpiar nombres de columnas (muy importante)
     df_datos.columns = df_datos.columns.str.strip()
@@ -834,7 +834,7 @@ elif seccion == "Agrupamientos":
     st.markdown("Esta visualización agrupa a los jugadores en 3 clusters según sus métricas durante la Copa América 2024.")
 
     # Cargar archivo base
-    df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv")
+    df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
     df.columns = df.columns.str.strip()
 
     # Filtro por minutos
