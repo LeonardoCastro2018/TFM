@@ -829,12 +829,15 @@ elif seccion == "Agrupamientos":
     df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
     df.columns = df.columns.str.strip()
 
-    # Filtrar jugadores con al menos 150 minutos
+    # Filtro por minutos
     if "minutesOnField" in df.columns:
         df["minutesOnField"] = pd.to_numeric(df["minutesOnField"], errors="coerce")
         df = df[df["minutesOnField"] >= 150]
+
         if df.empty:
             st.info("⚠️ No hay jugadores con más de 150 minutos.")
+        else:
+            st.dataframe(df.head())  # vista previa
     else:
         st.warning("⚠️ La columna 'minutesOnField' no está presente en el DataFrame.")
 
@@ -845,80 +848,83 @@ elif seccion == "Agrupamientos":
         "MED OF": "MED OF", "EXTR": "EXTR", "DEL": "DEL"
     }
 
-    # Cargar métricas por posición
-    metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv")
+    # Cargar métricas por posición (corrigiendo lectura)
+    metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
     metricas_pos.columns = metricas_pos.columns.str.strip()
 
     # Seleccionar posición del usuario
     pos_sel = st.selectbox("Selecciona una posición", list(posiciones.keys()))
 
-    # Verificar si la posición existe en el archivo de métricas
     if pos_sel not in metricas_pos.columns:
         st.error(f"No se encontraron métricas para la posición '{pos_sel}'")
     else:
-        columnas_metricas = metricas_pos[pos_sel].dropna().tolist()
-        columnas_metricas = [col.strip() for col in columnas_metricas if col.strip() in df.columns]
+        columnas_metricas = metricas_pos[pos_sel].dropna().astype(str).str.strip().tolist()
+        columnas_metricas = [col for col in columnas_metricas if col in df.columns]
 
         # Filtrar jugadores por posición
         df_pos = df[df["Pos_principal"] == posiciones[pos_sel]].copy()
-        df_pos = df_pos.dropna(subset=columnas_metricas)
 
-        if df_pos.empty or len(df_pos) < 3:
-            st.error("No hay suficientes jugadores con datos válidos para formar 3 clústers.")
+        if df_pos.empty or not columnas_metricas:
+            st.warning("No hay datos suficientes para esta posición o métricas no encontradas.")
         else:
             # Normalizar métricas
             from sklearn.preprocessing import MinMaxScaler
-            scaler = MinMaxScaler()
-            df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
-
-            # Clustering
             from sklearn.cluster import KMeans
-            kmeans = KMeans(n_clusters=3, random_state=42)
-            df_pos["cluster"] = kmeans.fit_predict(df_pos[columnas_metricas])
 
-            # Mostrar top 5 por cluster con nombre del jugador
-            st.markdown("### 🧑‍🏫 Top 5 jugadores por Cluster")
-            for c in sorted(df_pos["cluster"].unique()):
-                st.markdown(f"#### Cluster {c}")
-                cols = ["Nombre_Completo", "minutesOnField", "cluster"] + columnas_metricas
-                st.dataframe(df_pos[df_pos["cluster"] == c][cols].sort_values(by="minutesOnField", ascending=False).head(5), use_container_width=True)
+            df_pos = df_pos.dropna(subset=columnas_metricas)
+            if len(df_pos) < 3:
+                st.error("No hay suficientes jugadores con datos válidos para formar 3 clústers.")
+            else:
+                scaler = MinMaxScaler()
+                df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
 
-            # Exportar a PDF
-            st.markdown("### 🧾 Exportar análisis a PDF")
-            if st.button("Exportar a PDF", key="exportar_agrupamientos"):
-                with st.spinner("Generando PDF..."):
-                    try:
-                        from fpdf import FPDF
-                        import tempfile
+                # Clustering
+                kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+                df_pos["cluster"] = kmeans.fit_predict(df_pos[columnas_metricas])
 
-                        pdf = FPDF()
-                        pdf.add_page()
-                        pdf.set_font("Arial", size=14)
-                        pdf.cell(200, 10, txt=f"Agrupamiento - {pos_sel}", ln=True, align="C")
-                        pdf.ln(10)
+                # Mostrar top 5 por cluster con nombre del jugador
+                st.markdown("### 🧑‍🏫 Top 5 jugadores por Cluster")
+                for c in sorted(df_pos["cluster"].unique()):
+                    st.markdown(f"#### Cluster {c}")
+                    cols = ["Nombre_Completo", "minutesOnField", "cluster"] + columnas_metricas
+                    st.dataframe(df_pos[df_pos["cluster"] == c][cols].sort_values(by="minutesOnField", ascending=False).head(5), use_container_width=True)
 
-                        for c in sorted(df_pos["cluster"].unique()):
-                            pdf.set_font("Arial", style="B", size=11)
-                            pdf.cell(200, 8, txt=f"Clúster {c}", ln=True)
-                            pdf.set_font("Arial", size=9)
-                            top5 = df_pos[df_pos["cluster"] == c].sort_values(by="minutesOnField", ascending=False).head(5)
-                            for _, row in top5.iterrows():
-                                texto = f"{row['Nombre_Completo']} - Min: {int(row['minutesOnField'])}"
-                                for m in columnas_metricas:
-                                    texto += f" | {m}: {row[m]:.2f}"
-                                pdf.multi_cell(0, 6, txt=texto)
-                            pdf.ln(3)
+                # Exportar a PDF
+                st.markdown("### 🧾 Exportar análisis a PDF")
+                if st.button("Exportar a PDF", key="exportar_agrupamientos"):
+                    with st.spinner("Generando PDF..."):
+                        try:
+                            from fpdf import FPDF
+                            import tempfile
 
-                        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-                        pdf.output(temp_pdf.name)
+                            pdf = FPDF()
+                            pdf.add_page()
+                            pdf.set_font("Arial", size=14)
+                            pdf.cell(200, 10, txt=f"Agrupamiento - {pos_sel}", ln=True, align="C")
+                            pdf.ln(10)
 
-                        st.success("✅ PDF generado correctamente.")
-                        with open(temp_pdf.name, "rb") as f:
-                            st.download_button(
-                                label="📥 Descargar PDF",
-                                data=f,
-                                file_name=f"agrupamientos_completo_{pos_sel}.pdf",
-                                mime="application/pdf"
-                            )
-                    except Exception as e:
-                        st.error(f"Ocurrió un error al generar el PDF: {e}")
+                            for c in sorted(df_pos["cluster"].unique()):
+                                pdf.set_font("Arial", style="B", size=11)
+                                pdf.cell(200, 8, txt=f"Clúster {c}", ln=True)
+                                pdf.set_font("Arial", size=9)
+                                top5 = df_pos[df_pos["cluster"] == c].sort_values(by="minutesOnField", ascending=False).head(5)
+                                for _, row in top5.iterrows():
+                                    texto = f"{row['Nombre_Completo']} - Min: {int(row['minutesOnField'])}"
+                                    for m in columnas_metricas:
+                                        texto += f" | {m}: {row[m]:.2f}"
+                                    pdf.multi_cell(0, 6, txt=texto)
+                                pdf.ln(3)
+
+                            temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+                            pdf.output(temp_pdf.name)
+
+                            st.success("✅ PDF generado correctamente.")
+                            with open(temp_pdf.name, "rb") as f:
+                                st.download_button(
+                                    label="📥 Descargar PDF",
+                                    data=f,
+                                    file_name=f"agrupamientos_completo_{pos_sel}.pdf",
+                                    mime="application/pdf"
+                                )
+                        except Exception as e:
+                            st.error(f"Ocurrió un error al generar el PDF: {e}")
