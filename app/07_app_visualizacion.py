@@ -727,19 +727,20 @@ elif seccion == "Similares":
     df_datos = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
     df_metricas = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
 
+    # Limpiar nombres de columnas
     df_datos.columns = df_datos.columns.str.strip()
     df_metricas.columns = df_metricas.columns.str.strip()
 
-    # Convertir minutos a numérico
-    df_datos["minutesOnField"] = pd.to_numeric(df_datos["minutesOnField"], errors="coerce")
-
+    # Selección de posición
     posiciones_disponibles = df_datos["Pos_principal"].dropna().unique().tolist()
     posicion_seleccionada = st.selectbox("Seleccione una posición:", sorted(posiciones_disponibles))
 
+    # Rango de minutos jugados
     min_minutos = int(df_datos["minutesOnField"].min())
     max_minutos = int(df_datos["minutesOnField"].max())
     rango_minutos = st.slider("Filtrar por minutos jugados:", min_value=min_minutos, max_value=max_minutos, value=(100, max_minutos))
 
+    # Filtrado
     df_filtrado = df_datos[(df_datos["Pos_principal"] == posicion_seleccionada) &
                            (df_datos["minutesOnField"] >= rango_minutos[0]) &
                            (df_datos["minutesOnField"] <= rango_minutos[1])]
@@ -749,6 +750,7 @@ elif seccion == "Similares":
     else:
         metricas_posicion = df_metricas[posicion_seleccionada].dropna().astype(str).str.strip().tolist()
         columnas_faltantes = [col for col in metricas_posicion if col not in df_filtrado.columns]
+
         if columnas_faltantes:
             st.error(f"Error: Las siguientes métricas no están en el archivo de datos: {columnas_faltantes}")
         else:
@@ -764,7 +766,9 @@ elif seccion == "Similares":
                 from sklearn.preprocessing import StandardScaler
                 from sklearn.neighbors import NearestNeighbors
 
-                X = df_metricas_filtradas[metricas_posicion].fillna(0)
+                # CORRECCIÓN: asegurar que los datos sean numéricos
+                X = df_metricas_filtradas[metricas_posicion].apply(pd.to_numeric, errors='coerce').fillna(0)
+
                 scaler = StandardScaler()
                 X_scaled = scaler.fit_transform(X)
 
@@ -778,6 +782,7 @@ elif seccion == "Similares":
                 similares["Distancia"] = distancias[0]
                 similares = similares[similares["Jugador"] != jugador_base]
                 similares["Similitud (%)"] = (1 - (similares["Distancia"] / similares["Distancia"].max())) * 100
+
                 similares = similares.sort_values("Similitud (%)", ascending=False)
                 similares.reset_index(drop=True, inplace=True)
                 similares.index = similares.index + 1
@@ -825,10 +830,10 @@ elif seccion == "Agrupamientos":
 
     df = pd.read_csv("Data/eventos_copa_america/Copa_America_24.csv", sep=";")
     df.columns = df.columns.str.strip()
-    df["minutesOnField"] = pd.to_numeric(df["minutesOnField"], errors="coerce")
 
     if "minutesOnField" in df.columns:
         df = df[df["minutesOnField"] >= 150]
+
         if df.empty:
             st.info("⚠️ No hay jugadores con más de 150 minutos.")
         else:
@@ -842,7 +847,7 @@ elif seccion == "Agrupamientos":
         "MED OF": "MED OF", "EXTR": "EXTR", "DEL": "DEL"
     }
 
-    metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv", sep=";")
+    metricas_pos = pd.read_csv("Data/eventos_copa_america/Metricas.csv")
     pos_sel = st.selectbox("Selecciona una posición", list(posiciones.keys()))
     columnas_metricas = metricas_pos[pos_sel].dropna().tolist()
     columnas_metricas = [col for col in columnas_metricas if col in df.columns]
@@ -854,7 +859,10 @@ elif seccion == "Agrupamientos":
     else:
         from sklearn.preprocessing import MinMaxScaler
         scaler = MinMaxScaler()
+
+        # CORRECCIÓN: convertir a numérico antes de escalar
         df_pos = df_pos.dropna(subset=columnas_metricas)
+        df_pos[columnas_metricas] = df_pos[columnas_metricas].apply(pd.to_numeric, errors='coerce').fillna(0)
         df_pos[columnas_metricas] = scaler.fit_transform(df_pos[columnas_metricas])
 
         from sklearn.cluster import KMeans
