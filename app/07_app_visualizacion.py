@@ -80,8 +80,14 @@ def cargar_eventos():
         df = pd.read_csv("Data/eventos_copa_america/eventos_copa_america_2024.csv", low_memory=False)
         if 'location' in df.columns:
             df = df[df['location'].notna()].copy()
-            df['x'] = df['location'].apply(lambda loc: eval(loc)[0] if isinstance(loc, str) and ',' in loc else None)
-            df['y'] = df['location'].apply(lambda loc: eval(loc)[1] if isinstance(loc, str) and ',' in loc else None)
+            def extraer_coord(loc, index):
+                try:
+                    coords = ast.literal_eval(loc)
+                    return coords[index] if isinstance(coords, (list, tuple)) else None
+                except Exception:
+                    return None
+            df['x'] = df['location'].apply(lambda loc: extraer_coord(loc, 0))
+            df['y'] = df['location'].apply(lambda loc: extraer_coord(loc, 1))
         return df
     except Exception as e:
         st.error(f"❌ Error al cargar eventos: {e}")
@@ -96,11 +102,8 @@ def cargar_descripciones():
     else:
         return {}
 
-with st.spinner("Cargando eventos..."):
-    df = cargar_eventos()
-    print("Tamaño del dataframe de eventos:", df.shape)
-with st.spinner("Cargando descripciones..."):
-    desc_eventos = cargar_descripciones()
+df = cargar_eventos()
+desc_eventos = cargar_descripciones()
 
 
 # Secciones
