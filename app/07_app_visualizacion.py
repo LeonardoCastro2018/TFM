@@ -725,7 +725,7 @@ elif seccion == "Similares":
 
     # Carga de archivos externos
     df_datos = pd.read_excel("Data/eventos_copa_america/Copa_America_24.xlsx")
-    df_metricas = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Metricas.xlsx")
+    df_metricas = pd.read_excel("Proyecto Final/Data/eventos_copa_america/Metricas.xlsx")
 
     # Limpiar nombres de columnas (muy importante)
     df_datos.columns = df_datos.columns.str.strip()
@@ -840,8 +840,15 @@ elif seccion == "Agrupamientos":
     # Filtro por minutos
     if "minutesOnField" in df.columns:
      df = df[df["minutesOnField"] >= 150]
+
+    if df.empty:
+        st.info("⚠️ No hay jugadores con más de 150 minutos.")
+    else:
+        # TODO: tu visualización va acá
+        st.dataframe(df.head())  # ejemplo
 else:
     st.warning("⚠️ La columna 'minutesOnField' no está presente en el DataFrame.")
+
 
     # Agrupar por posición
     posiciones = {
