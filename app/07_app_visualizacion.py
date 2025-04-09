@@ -76,13 +76,16 @@ else:
 # Cargar datos
 @st.cache_data
 def cargar_eventos():
-    df = pd.read_csv("Data/eventos_copa_america/eventos_copa_america_2024.csv", low_memory=False)
-    if 'location' in df.columns:
-        df = df[df['location'].notna()].copy()
-        df['x'] = df['location'].apply(lambda loc: eval(loc)[0] if isinstance(loc, str) and ',' in loc else None)
-        df['y'] = df['location'].apply(lambda loc: eval(loc)[1] if isinstance(loc, str) and ',' in loc else None)
-    return df
-
+    try:
+        df = pd.read_csv("Data/eventos_copa_america/eventos_copa_america_2024.csv", low_memory=False)
+        if 'location' in df.columns:
+            df = df[df['location'].notna()].copy()
+            df['x'] = df['location'].apply(lambda loc: eval(loc)[0] if isinstance(loc, str) and ',' in loc else None)
+            df['y'] = df['location'].apply(lambda loc: eval(loc)[1] if isinstance(loc, str) and ',' in loc else None)
+        return df
+    except Exception as e:
+        st.error(f"❌ Error al cargar eventos: {e}")
+        return pd.DataFrame()
 
 @st.cache_data
 def cargar_descripciones():
@@ -93,9 +96,11 @@ def cargar_descripciones():
     else:
         return {}
 
-
-df = cargar_eventos()
-desc_eventos = cargar_descripciones()
+with st.spinner("Cargando eventos..."):
+    df = cargar_eventos()
+    print("Tamaño del dataframe de eventos:", df.shape)
+with st.spinner("Cargando descripciones..."):
+    desc_eventos = cargar_descripciones()
 
 
 # Secciones
@@ -726,8 +731,8 @@ elif seccion == "Similares":
     st.markdown("Encuentra jugadores con perfiles estadísticos similares durante la Copa América 2024.")
 
     # Carga de archivos externos
-    df_datos = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Datos/eventos_copa_américa/Copa América 24.xlsx")
-    df_metricas = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Datos/eventos_copa_américa/Métricas.xlsx")
+    df_datos = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Copa_America_24.xlsx")
+    df_metricas = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Metricas.xlsx")
 
     # Limpiar nombres de columnas (muy importante)
     df_datos.columns = df_datos.columns.str.strip()
@@ -836,7 +841,7 @@ elif seccion == "Agrupamientos":
     st.markdown("Esta visualización agrupa a los jugadores en 3 clusters según sus métricas durante la Copa América 2024.")
 
     # Cargar archivo base
-    df_datos = pd.read_excel("Datos/eventos_copa_américa/Copa América 24.xlsx")
+    df_datos = pd.read_excel("Data/eventos_copa_america/Copa_America_24.xlsx")
     df.columns = df.columns.str.strip()
 
     # Filtro por minutos
@@ -850,7 +855,7 @@ elif seccion == "Agrupamientos":
     }
 
     # Cargar métricas por posición
-    metricas_pos = pd.read_excel("Datos/eventos_copa_américa/Métricas.xlsx")
+    metricas_pos = pd.read_excel("Data/eventos_copa_america/Metricas.xlsx")
     
     # Seleccionar posición del usuario
     pos_sel = st.selectbox("Selecciona una posición", list(posiciones.keys()))
