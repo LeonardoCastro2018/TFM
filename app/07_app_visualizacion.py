@@ -839,7 +839,7 @@ elif seccion == "Agrupamientos":
 
     # Filtro por minutos
     if "minutesOnField" in df.columns:
-    df = df[df["minutesOnField"] >= 150]
+     df = df[df["minutesOnField"] >= 150]
 else:
     st.warning("⚠️ La columna 'minutesOnField' no está presente en el DataFrame.")
 
