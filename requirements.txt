@@ -1,10 +1,10 @@
 streamlit
 pandas
-numpy
 matplotlib
 seaborn
-mplsoccer
 scikit-learn
+mplsoccer
 plotly
+altair
 fpdf
-Pillow
+openpyxl
