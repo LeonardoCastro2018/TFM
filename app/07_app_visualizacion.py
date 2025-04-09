@@ -724,8 +724,8 @@ elif seccion == "Similares":
     st.markdown("Encuentra jugadores con perfiles estadísticos similares durante la Copa América 2024.")
 
     # Carga de archivos externos
-    df_datos = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Copa_America_24.xlsx")
-    df_metricas = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Metricas.xlsx")
+    df_datos = pd.read_excel("Data/eventos_copa_america/Copa_America_24.xlsx")
+    df_metricas = pd.read_excel("Data/eventos_copa_america/Metricas.xlsx")
 
     # Limpiar nombres de columnas (muy importante)
     df_datos.columns = df_datos.columns.str.strip()
