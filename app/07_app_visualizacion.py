@@ -76,22 +76,12 @@ else:
 # Cargar datos
 @st.cache_data
 def cargar_eventos():
-    try:
-        df = pd.read_csv("Data/eventos_copa_america/eventos_copa_america_2024.csv", low_memory=False)
-        if 'location' in df.columns:
-            df = df[df['location'].notna()].copy()
-            def extraer_coord(loc, index):
-                try:
-                    coords = ast.literal_eval(loc)
-                    return coords[index] if isinstance(coords, (list, tuple)) else None
-                except Exception:
-                    return None
-            df['x'] = df['location'].apply(lambda loc: extraer_coord(loc, 0))
-            df['y'] = df['location'].apply(lambda loc: extraer_coord(loc, 1))
-        return df
-    except Exception as e:
-        st.error(f"❌ Error al cargar eventos: {e}")
-        return pd.DataFrame()
+    df = pd.read_csv("Data/eventos_copa_america/eventos_copa_america_2024.csv", low_memory=False)
+    if 'location' in df.columns:
+        df = df[df['location'].notna()].copy()
+        df['x'] = df['location'].apply(lambda loc: eval(loc)[0] if isinstance(loc, str) and ',' in loc else None)
+        df['y'] = df['location'].apply(lambda loc: eval(loc)[1] if isinstance(loc, str) and ',' in loc else None)
+    return df
 
 @st.cache_data
 def cargar_descripciones():
@@ -734,7 +724,7 @@ elif seccion == "Similares":
     st.markdown("Encuentra jugadores con perfiles estadísticos similares durante la Copa América 2024.")
 
     # Carga de archivos externos
-    df_datos = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Copa_America_24.xlsx")
+    df_datos = pd.read_excel("Data/eventos_copa_america/Copa_America_24.xlsx")
     df_metricas = pd.read_excel("C:/Users/Usuario/OneDrive/Documentos/Cursos/Sport Data Campus/Master en Python Avanzado al deporte/Modulo 11/Proyecto Final/Data/eventos_copa_america/Metricas.xlsx")
 
     # Limpiar nombres de columnas (muy importante)
@@ -848,7 +838,10 @@ elif seccion == "Agrupamientos":
     df.columns = df.columns.str.strip()
 
     # Filtro por minutos
+    if "minutesOnField" in df.columns:
     df = df[df["minutesOnField"] >= 150]
+else:
+    st.warning("⚠️ La columna 'minutesOnField' no está presente en el DataFrame.")
 
     # Agrupar por posición
     posiciones = {
